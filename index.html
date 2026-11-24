@@ -6,130 +6,339 @@
   <title>Hangout Relay</title>
   <style>
     :root {
-      --bg: #0d1117;
-      --card: #161b22;
-      --border: #30363d;
-      --text: #e6edf3;
-      --muted: #8b949e;
-      --accent: #58a6ff;
-      --danger: #f85149;
-      --success: #3fb950;
+      --bg: #090d16;
+      --surface: #111827;
+      --surface-hover: #1f2937;
+      --border: #1f2937;
+      --text: #f3f4f6;
+      --muted: #9ca3af;
+      --accent: #3b82f6;
+      --accent-hover: #2563eb;
+      --danger: #ef4444;
+      --success: #10b981;
     }
-    * { box-sizing: border-box; font-family: system-ui, -apple-system, sans-serif; }
-    body { margin: 0; background: var(--bg); color: var(--text); display: flex; flex-direction: column; min-height: 100vh; }
-    header { padding: 14px 20px; background: var(--card); border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
-    header h1 { margin: 0; font-size: 1.15rem; }
-    main { flex: 1; padding: 20px; max-width: 1100px; width: 100%; margin: 0 auto; }
-    .card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 18px; margin-bottom: 16px; }
+    * { box-sizing: border-box; font-family: 'Inter', system-ui, -apple-system, sans-serif; }
+    body { 
+      margin: 0; 
+      background: var(--bg); 
+      color: var(--text); 
+      display: flex; 
+      flex-direction: column; 
+      height: 100vh; 
+      overflow: hidden; 
+    }
+    header { 
+      padding: 12px 24px; 
+      background: var(--surface); 
+      border-bottom: 1px solid var(--border); 
+      display: flex; 
+      justify-content: space-between; 
+      align-items: center; 
+      flex-shrink: 0;
+    }
+    header h1 { margin: 0; font-size: 1.1rem; font-weight: 700; letter-spacing: -0.02em; }
+    .badge { background: rgba(59, 130, 246, 0.15); border: 1px solid rgba(59, 130, 246, 0.3); padding: 4px 10px; border-radius: 999px; font-size: 0.8rem; color: #60a5fa; font-weight: 500; }
+
+    main { 
+      flex: 1; 
+      display: flex; 
+      flex-direction: column; 
+      padding: 16px; 
+      max-width: 1200px; 
+      width: 100%; 
+      margin: 0 auto; 
+      overflow: hidden; 
+    }
     .hidden { display: none !important; }
-    input, select, button { padding: 10px 12px; border-radius: 6px; border: 1px solid var(--border); background: #0d1117; color: var(--text); font-size: 0.95rem; }
-    input { width: 100%; margin-bottom: 10px; }
-    button { cursor: pointer; background: var(--accent); color: #0d1117; font-weight: 600; border: none; }
-    button.secondary { background: #21262d; color: var(--text); border: 1px solid var(--border); }
+
+    /* Form Elements */
+    input, select, button { 
+      padding: 10px 14px; 
+      border-radius: 8px; 
+      border: 1px solid #374151; 
+      background: #090d16; 
+      color: var(--text); 
+      font-size: 0.95rem; 
+      outline: none;
+      transition: border-color 0.2s, background 0.2s;
+    }
+    input:focus, select:focus { border-color: var(--accent); }
+    button { cursor: pointer; background: var(--accent); color: #fff; font-weight: 600; border: none; }
+    button:hover { background: var(--accent-hover); }
+    button.secondary { background: var(--surface-hover); color: var(--text); border: 1px solid #374151; }
+    button.secondary:hover { background: #374151; }
     button.danger { background: var(--danger); color: #fff; }
-    button:disabled { opacity: 0.5; cursor: not-allowed; }
-    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; }
-    .video-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; margin-bottom: 16px; }
-    .video-tile { background: #000; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; position: relative; aspect-ratio: 4/3; }
-    .video-tile video, .video-tile img { width: 100%; height: 100%; object-fit: cover; display: block; }
-    .video-label { position: absolute; bottom: 6px; left: 8px; background: rgba(0,0,0,0.7); padding: 2px 8px; border-radius: 4px; font-size: 0.8rem; }
-    .chat-box { height: 260px; overflow-y: auto; background: #0d1117; border: 1px solid var(--border); border-radius: 6px; padding: 10px; margin-bottom: 10px; }
-    .msg { margin-bottom: 6px; font-size: 0.92rem; word-break: break-word; }
-    .msg.sys { color: var(--muted); font-style: italic; }
-    .room-item { display: flex; justify-content: space-between; align-items: center; padding: 10px; border-bottom: 1px solid var(--border); }
-    .badge { background: #21262d; padding: 3px 8px; border-radius: 12px; font-size: 0.8rem; color: var(--accent); }
-    .member-chip { background: #21262d; border: 1px solid var(--border); padding: 3px 8px; border-radius: 6px; font-size: 0.85rem; cursor: pointer; display: inline-block; margin: 2px; transition: background 0.2s; }
-    .member-chip:hover { background: #30363d; border-color: var(--accent); }
-    footer { text-align: center; padding: 14px; font-size: 0.85rem; color: var(--muted); }
-    .terms-box { max-height: 140px; overflow-y: auto; background: #0d1117; padding: 10px; border: 1px solid var(--border); border-radius: 6px; font-size: 0.85rem; color: var(--muted); margin-bottom: 10px; }
-    #copyToast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: var(--success); color: #fff; padding: 8px 16px; border-radius: 6px; font-size: 0.9rem; transition: opacity 0.3s; opacity: 0; pointer-events: none; }
+    button.danger:hover { background: #dc2626; }
+
+    /* STATE 1: SLEEK CENTERED LOGIN CARD */
+    #authSection {
+      margin: auto;
+      width: 100%;
+      max-width: 420px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 28px;
+      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5);
+    }
+    #authSection h2 { margin: 0 0 6px 0; font-size: 1.4rem; text-align: center; }
+    .subtitle { text-align: center; color: var(--muted); font-size: 0.9rem; margin: 0 0 20px 0; }
+    .input-group { margin-bottom: 16px; }
+    .input-group label { display: block; font-size: 0.85rem; color: var(--muted); margin-bottom: 6px; font-weight: 500; }
+    .input-group input { width: 100%; }
+
+    /* Collapsible Terms Dropdown */
+    details.terms-dropdown {
+      background: #090d16;
+      border: 1px solid #374151;
+      border-radius: 8px;
+      margin-bottom: 12px;
+      font-size: 0.85rem;
+    }
+    details.terms-dropdown summary {
+      padding: 10px 12px;
+      cursor: pointer;
+      color: #60a5fa;
+      font-weight: 500;
+      user-select: none;
+    }
+    details.terms-dropdown summary:hover { text-decoration: underline; }
+    .terms-content {
+      padding: 0 12px 12px 12px;
+      color: var(--muted);
+      line-height: 1.45;
+      border-top: 1px solid #1f2937;
+      padding-top: 8px;
+    }
+    .agree-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 0.9rem;
+      margin-bottom: 18px;
+      cursor: pointer;
+      user-select: none;
+    }
+    .agree-row input { width: 16px; height: 16px; margin: 0; cursor: pointer; accent-color: var(--accent); }
+
+    /* STATE 2: LOBBY */
+    #lobbySection {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 20px;
+      overflow-y: auto;
+      padding-bottom: 20px;
+    }
+    .card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 20px; }
+    .card h2 { margin-top: 0; font-size: 1.15rem; }
+    .room-item { display: flex; justify-content: space-between; align-items: center; padding: 12px; border-bottom: 1px solid var(--border); }
+    .room-item:last-child { border-bottom: none; }
+
+    /* STATE 3: SINGLE-SCREEN ACTIVE ROOM */
+    #roomSection {
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 14px;
+      overflow: hidden;
+    }
+    .room-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-bottom: 10px;
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    .member-chip { 
+      background: #1f2937; 
+      border: 1px solid #374151; 
+      padding: 3px 9px; 
+      border-radius: 6px; 
+      font-size: 0.8rem; 
+      cursor: pointer; 
+      display: inline-block; 
+      margin: 2px; 
+      transition: all 0.15s; 
+    }
+    .member-chip:hover { background: #374151; border-color: var(--accent); }
+
+    /* DYNAMIC SCALING VIDEO GRID (Fits 1-4 in 2x2, shrinks to 4x4 for 5-16) */
+    .video-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      grid-template-rows: repeat(2, 1fr);
+      gap: 8px;
+      height: 46vh; /* Keeps cameras compact so chat always fits below */
+      min-height: 200px;
+      margin: 10px 0;
+      flex-shrink: 0;
+    }
+    /* Automatically shrinks tiles by half (4x4 = 16 slots) when > 4 cameras are active */
+    .video-grid.compact-16 {
+      grid-template-columns: repeat(4, 1fr);
+      grid-template-rows: repeat(4, 1fr);
+      gap: 6px;
+    }
+    .video-tile { 
+      background: #000; 
+      border: 1px solid #374151; 
+      border-radius: 8px; 
+      overflow: hidden; 
+      position: relative; 
+      width: 100%;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .video-tile video, .video-tile img { 
+      width: 100%; 
+      height: 100%; 
+      object-fit: cover; 
+      display: block; 
+    }
+    .video-label { 
+      position: absolute; 
+      bottom: 4px; 
+      left: 6px; 
+      background: rgba(0, 0, 0, 0.75); 
+      padding: 2px 6px; 
+      border-radius: 4px; 
+      font-size: 0.72rem; 
+      pointer-events: none;
+    }
+
+    /* Chat Area (Fills remaining screen height) */
+    .chat-box { 
+      flex: 1; 
+      overflow-y: auto; 
+      background: #090d16; 
+      border: 1px solid var(--border); 
+      border-radius: 8px; 
+      padding: 10px; 
+      margin-bottom: 10px; 
+      min-height: 80px;
+    }
+    .msg { margin-bottom: 6px; font-size: 0.9rem; word-break: break-word; }
+    .msg.sys { color: var(--muted); font-style: italic; font-size: 0.85rem; }
+    .chat-input-row { display: flex; gap: 8px; flex-shrink: 0; }
+    .chat-input-row input { flex: 1; margin: 0; }
+
+    #copyToast { 
+      position: fixed; 
+      bottom: 20px; 
+      left: 50%; 
+      transform: translateX(-50%); 
+      background: var(--success); 
+      color: #fff; 
+      padding: 8px 16px; 
+      border-radius: 8px; 
+      font-size: 0.88rem; 
+      font-weight: 500;
+      transition: opacity 0.25s; 
+      opacity: 0; 
+      pointer-events: none; 
+      z-index: 100;
+    }
   </style>
 </head>
 <body>
   <header>
     <h1>Hangout Relay</h1>
-    <div id="userBadge" class="hidden"></div>
+    <div id="userBadge" class="badge hidden"></div>
   </header>
 
   <main>
-    <!-- STATE 1: NICKNAME & LOGIN -->
-    <section id="authSection" class="card">
-      <h2>Choose Nickname</h2>
+    <!-- STATE 1: NICKNAME & COLLAPSIBLE TERMS -->
+    <section id="authSection">
+      <h2>Join Hangout</h2>
+      <p class="subtitle">Pick a display name to jump into a room</p>
 
-      <div class="terms-box">
-        <strong>Terms & Conditions / Safety Notice:</strong><br />
-        By using this platform, you agree to follow community safety rules. No harassment, predatory behavior, or illegal content is allowed. Public rooms are visible to all users, and all chat rooms may be reviewed or monitored in real time by moderators/developers to enforce safety and issue bans. Camera feeds are only relayed to members inside your current room.
+      <div class="input-group">
+        <label for="nickInput">Nickname</label>
+        <input id="nickInput" placeholder="Enter your nickname..." maxlength="20" autocomplete="off" />
       </div>
-      <label style="display:flex; gap:8px; align-items:center; margin-bottom:12px;">
-        <input type="checkbox" id="acceptTerms" style="width:auto; margin:0;" />
-        I have read and agree to the Terms & Conditions and moderation policy.
+
+      <details class="terms-dropdown">
+        <summary>Read Terms & Conditions</summary>
+        <div class="terms-content">
+          By using this platform, you agree to follow community safety rules. No harassment, predatory behavior, or illegal content is allowed. Public rooms are visible to all users, and chat rooms may be monitored in real time by moderators to enforce safety and issue bans. Camera feeds are only relayed to members inside your current room.
+        </div>
+      </details>
+
+      <label class="agree-row">
+        <input type="checkbox" id="acceptTerms" />
+        <span>I agree to the Terms & Conditions</span>
       </label>
 
-      <label>Your Nickname</label>
-      <input id="nickInput" placeholder="CoolNickname" maxlength="20" />
-      <button id="loginBtn">Enter Hangout</button>
-      <p id="authStatus" style="font-size:0.85rem; color:var(--muted);"></p>
+      <button id="loginBtn" style="width: 100%; padding: 12px;">Enter Hangout</button>
+      <p id="authStatus" style="font-size:0.85rem; color:var(--danger); text-align:center; margin: 10px 0 0 0;"></p>
     </section>
 
     <!-- STATE 2: ROOM LOBBY -->
-    <section id="lobbySection" class="card hidden">
-      <div class="grid">
-        <div class="card" style="margin:0;">
-          <h2>Public Rooms</h2>
-          <div id="publicRoomsList"><p style="color:var(--muted)">No active public rooms yet. Create one!</p></div>
-        </div>
-        <div class="card" style="margin:0;">
-          <h2>Create or Join a Room</h2>
+    <section id="lobbySection" class="hidden">
+      <div class="card">
+        <h2>Public Rooms</h2>
+        <div id="publicRoomsList"><p style="color:var(--muted)">No active public rooms yet. Create one!</p></div>
+      </div>
+      <div class="card">
+        <h2>Create or Join a Room</h2>
+        <div class="input-group">
           <label>Room Name</label>
           <input id="roomNameInput" placeholder="e.g. Chill Zone" />
+        </div>
+        <div class="input-group">
           <label>Room Type</label>
-          <select id="roomTypeSelect" style="width:100%; margin-bottom:10px;">
+          <select id="roomTypeSelect" style="width:100%;">
             <option value="public">Public Room (Listed)</option>
             <option value="private">Private Room (Password-Protected)</option>
           </select>
-          <div id="privatePwBox" class="hidden">
-            <label>Room Password</label>
-            <input id="roomPwInput" type="password" placeholder="Secret room password" />
-          </div>
-          <button id="joinCreateBtn">Create / Join Room</button>
         </div>
+        <div id="privatePwBox" class="input-group hidden">
+          <label>Room Password</label>
+          <input id="roomPwInput" type="password" placeholder="Secret room password" />
+        </div>
+        <button id="joinCreateBtn" style="width:100%;">Create / Join Room</button>
       </div>
     </section>
 
-    <!-- STATE 3: ACTIVE ROOM -->
-    <section id="roomSection" class="card hidden">
-      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+    <!-- STATE 3: SINGLE-SCREEN ACTIVE ROOM -->
+    <section id="roomSection" class="hidden">
+      <div class="room-header">
         <div>
-          <h2 id="activeRoomTitle" style="margin:0;">Room</h2>
-          <div id="roomMembersBar" style="margin-top:6px;"></div>
+          <h2 id="activeRoomTitle" style="margin:0; font-size:1.05rem;">Room</h2>
+          <div id="roomMembersBar" style="margin-top:4px;"></div>
         </div>
         <div style="display:flex; gap:8px;">
           <button id="toggleCamBtn" class="secondary">Start Camera</button>
-          <button id="leaveRoomBtn" class="danger">Leave Room</button>
+          <button id="leaveRoomBtn" class="danger">Leave</button>
         </div>
       </div>
 
-      <div id="videoGrid" class="video-grid">
+      <!-- Video Grid: Hidden when 0 cams are on, 2x2 for 1-4 cams, 4x4 for 5-16 cams -->
+      <div id="videoGrid" class="video-grid hidden">
         <div id="localVideoTile" class="video-tile hidden">
           <video id="localVideo" autoplay muted playsinline></video>
-          <span class="video-label">You (Camera)</span>
+          <span class="video-label">You</span>
         </div>
       </div>
       <canvas id="captureCanvas" width="240" height="180" class="hidden"></canvas>
 
       <div id="chatBox" class="chat-box"></div>
-      <div style="display:flex; gap:8px;">
-        <input id="chatInput" placeholder="Type a message..." style="margin:0;" />
+      <div class="chat-input-row">
+        <input id="chatInput" placeholder="Type a message..." />
         <button id="sendChatBtn">Send</button>
       </div>
     </section>
   </main>
 
-  <div id="copyToast">Browser ID copied to clipboard!</div>
-
-  <footer>
-    Hangout Relay &bull; Secure Connection
-  </footer>
+  <div id="copyToast">Browser ID copied!</div>
 
   <script>
     const $ = id => document.getElementById(id);
@@ -144,22 +353,43 @@
     let camInterval = null;
     const remoteVideos = new Map();
 
-    // Get or create persistent browser ID in localStorage
+    // Fixed persistent browser ID generator
     let browserId = localStorage.getItem('hangout_browser_id');
     if (!browserId) {
       browserId = 'bid_' + Math.random().toString(36).substring(2) + Date.now().toString(36);
       localStorage.setItem('hangout_browser_id', browserId);
     }
 
+    // Dynamically adjust camera grid between hidden (0), 2x2 (1-4), and 4x4 (5-16)
+    function updateCameraGridLayout() {
+      const grid = $('videoGrid');
+      const localActive = !$('localVideoTile').classList.contains('hidden');
+      const totalCams = (localActive ? 1 : 0) + remoteVideos.size;
+
+      if (totalCams === 0) {
+        grid.classList.add('hidden');
+      } else {
+        grid.classList.remove('hidden');
+        if (totalCams > 4) {
+          grid.classList.add('compact-16');
+        } else {
+          grid.classList.remove('compact-16');
+        }
+      }
+    }
+
     $('roomTypeSelect').addEventListener('change', e => {
       $('privatePwBox').classList.toggle('hidden', e.target.value !== 'private');
     });
 
+    $('nickInput').onkeydown = e => { if (e.key === 'Enter') $('loginBtn').click(); };
+
     $('loginBtn').onclick = async () => {
       const nickname = $('nickInput').value.trim();
-      if (!$('acceptTerms').checked) return alert('Please accept the Terms & Conditions first.');
-      if (!nickname) return alert('Enter your nickname.');
+      if (!nickname) return ($('authStatus').textContent = 'Please enter a nickname first.');
+      if (!$('acceptTerms').checked) return ($('authStatus').textContent = 'Please check the box to agree to the Terms & Conditions.');
       
+      $('authStatus').style.color = 'var(--muted)';
       $('authStatus').textContent = 'Connecting...';
       try {
         const res = await fetch(`${HARDCODED_SERVER_URL}/api/login`, {
@@ -168,11 +398,15 @@
           body: JSON.stringify({ nickname, browserId })
         });
         const data = await res.json();
-        if (!data.ok) return ($('authStatus').textContent = data.error || 'Login failed.');
+        if (!data.ok) {
+          $('authStatus').style.color = 'var(--danger)';
+          return ($('authStatus').textContent = data.error || 'Login failed.');
+        }
         sessionToken = data.token;
         myNickname = data.nickname;
         connectUserWS(HARDCODED_SERVER_URL);
       } catch (e) {
+        $('authStatus').style.color = 'var(--danger)';
         $('authStatus').textContent = 'Could not reach Termux server.';
       }
     };
@@ -192,24 +426,25 @@
           $('authSection').classList.add('hidden');
           $('lobbySection').classList.remove('hidden');
           $('userBadge').classList.remove('hidden');
-          $('userBadge').textContent = `${myNickname} (ID: ${msg.browserId.slice(0,8)}...)`;
+          $('userBadge').textContent = `${myNickname}`;
           renderRoomsList(msg.rooms);
         }
         if (msg.type === 'rooms_list') renderRoomsList(msg.rooms);
         if (msg.type === 'joined_room') {
           $('lobbySection').classList.add('hidden');
           $('roomSection').classList.remove('hidden');
-          $('activeRoomTitle').textContent = `${msg.title} (${msg.isPrivate ? 'Private' : 'Public'})`;
+          $('activeRoomTitle').textContent = `${msg.title} • ${msg.isPrivate ? 'Private' : 'Public'}`;
           $('chatBox').innerHTML = '';
+          updateCameraGridLayout();
         }
         if (msg.type === 'room_members') {
           const bar = $('roomMembersBar');
-          bar.innerHTML = '<span style="color:var(--muted); font-size:0.85rem;">Members (Click name to copy ID): </span>';
+          bar.innerHTML = '<span style="color:var(--muted); font-size:0.8rem;">Members: </span>';
           msg.members.forEach(m => {
             const chip = document.createElement('span');
             chip.className = 'member-chip';
             chip.textContent = m.nickname;
-            chip.title = `Click to copy Browser ID: ${m.browserId}`;
+            chip.title = `Click to copy ID: ${m.browserId}`;
             chip.onclick = () => {
               navigator.clipboard.writeText(m.browserId);
               showToast(`Copied ID for ${m.nickname}: ${m.browserId}`);
@@ -218,9 +453,15 @@
           });
 
           const activeIds = new Set(msg.members.map(m => m.id));
+          let removedAny = false;
           for (const [id, el] of remoteVideos) {
-            if (!activeIds.has(id)) { el.remove(); remoteVideos.delete(id); }
+            if (!activeIds.has(id)) { 
+              el.remove(); 
+              remoteVideos.delete(id); 
+              removedAny = true;
+            }
           }
+          if (removedAny) updateCameraGridLayout();
         }
         if (msg.type === 'chat') appendChat($('chatBox'), msg);
         if (msg.type === 'left_room' || msg.type === 'room_closed') {
@@ -304,6 +545,8 @@
           $('localVideo').srcObject = localStream;
           $('localVideoTile').classList.remove('hidden');
           $('toggleCamBtn').textContent = 'Stop Camera';
+          updateCameraGridLayout();
+
           const canvas = $('captureCanvas');
           const ctx = canvas.getContext('2d');
           camInterval = setInterval(() => {
@@ -328,6 +571,7 @@
       }
       $('localVideoTile').classList.add('hidden');
       $('toggleCamBtn').textContent = 'Start Camera';
+      updateCameraGridLayout();
     }
 
     function handleBinaryFrame(buffer) {
@@ -345,6 +589,7 @@
         tile.innerHTML = `<img /><span class="video-label">Peer ${senderId.slice(0,4)}</span>`;
         $('videoGrid').appendChild(tile);
         remoteVideos.set(senderId, tile);
+        updateCameraGridLayout();
       }
       const img = tile.querySelector('img');
       if (img.src) URL.revokeObjectURL(img.src);
@@ -354,6 +599,7 @@
     function clearRemoteVideos() {
       for (const [_, tile] of remoteVideos) tile.remove();
       remoteVideos.clear();
+      updateCameraGridLayout();
     }
 
     function escapeHtml(str) {
