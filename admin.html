@@ -75,7 +75,10 @@
     <section id="devDashboard" class="card hidden" style="margin:0; flex:1; display:flex; flex-direction:column;">
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; border-bottom:1px solid var(--border); padding-bottom:10px;">
         <h2 style="margin:0; font-size:1.1rem;">Stealth Moderation & Speaker Console</h2>
-        <span style="font-size:0.85rem; color:var(--success);">● Connected Securely</span>
+        <div style="display:flex; align-items:center; gap:12px;">
+          <span style="font-size:0.85rem; color:var(--success);">● Connected Securely</span>
+          <button id="refreshRoomsBtn" class="secondary" style="padding: 5px 10px; font-size: 0.8rem;">🔄 Refresh Rooms</button>
+        </div>
       </div>
 
       <!-- Top Row: Active Rooms & Stealth Chat Inspector -->
@@ -155,7 +158,6 @@
         }
         if (msg.type === 'dev_room_history') {
           inspectedRoomId = msg.roomId;
-          const r = cachedRooms.find(x => x.id === roomId);
           $('inspectedRoomTitle').textContent = `Stealth Chat Inspector (${msg.roomId})`;
           const box = $('devChatBox');
           box.innerHTML = '';
@@ -171,6 +173,18 @@
           }
         }
       };
+    };
+
+    // Manual Refresh Button (Re-requests room overview from server)
+    $('refreshRoomsBtn').onclick = () => {
+      if (devWs && devWs.readyState === WebSocket.OPEN) {
+        // Re-auth or trigger a gentle ping if needed, but since dev_overview broadcasts automatically on room events, 
+        // we can also re-inspect or just alert user. Let's make it re-send dev_auth or ping.
+        // Actually, the server pushes dev_overview on changes, but if they want to force update:
+        devWs.send(JSON.stringify({ type: 'dev_auth', key: $('devKeyInput').value.trim() }));
+      } else {
+        alert('WebSocket disconnected. Please reconnect.');
+      }
     };
 
     function renderDevRooms(rooms) {
@@ -261,7 +275,7 @@
         div.textContent = msg.text;
       } else {
         div.className = 'msg';
-        div.innerHTML = `<strong>${escapeHtml(msg.nickname)}:</strong> ${escapeHtml(msg.text)} <span style="font-size:0.75rem; color:var(--muted)">${msg.time || ''}</span>`;
+        div.innerHTML = `<strong>${escapeHtml(msg.nickname)}:</sup> ${escapeHtml(msg.text)} <span style="font-size:0.75rem; color:var(--muted)">${msg.time || ''}</span>`;
       }
       box.appendChild(div);
       box.scrollTop = box.scrollHeight;
