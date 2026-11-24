@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Hangout Dev Console</title>
+  <style>
+    :root {
+      --bg: #0d1117;
+      --card: #161b22;
+      --border: #30363d;
+      --text: #e6edf3;
+      --muted: #8b949e;
+      --accent: #58a6ff;
+      --danger: #f85149;
+      --success: #3fb950;
+    }
+    * { box-sizing: border-box; font-family: system-ui, -apple-system, sans-serif; }
+    body { margin: 0; background: var(--bg); color: var(--text); display: flex; flex-direction: column; min-height: 100vh; }
+    header { padding: 14px 20px; background: var(--card); border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+    header h1 { margin: 0; font-size: 1.15rem; }
+    main { flex: 1; padding: 20px; max-width: 1100px; width: 100%; margin: 0 auto; }
+    .card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 18px; margin-bottom: 16px; }
+    .hidden { display: none !important; }
+    input, select, button { padding: 10px 12px; border-radius: 6px; border: 1px solid var(--border); background: #0d1117; color: var(--text); font-size: 0.95rem; }
+    input { width: 100%; margin-bottom: 10px; }
+    button { cursor: pointer; background: var(--accent); color: #0d1117; font-weight: 600; border: none; }
+    button.secondary { background: #21262d; color: var(--text); border: 1px solid var(--border); }
+    button.danger { background: var(--danger); color: #fff; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; }
+    .chat-box { height: 260px; overflow-y: auto; background: #0d1117; border: 1px solid var(--border); border-radius: 6px; padding: 10px; margin-bottom: 10px; }
+    .msg { margin-bottom: 6px; font-size: 0.92rem; word-break: break-word; }
+    .msg.sys { color: var(--muted); font-style: italic; }
+    .room-item { display: flex; justify-content: space-between; align-items: center; padding: 10px; border-bottom: 1px solid var(--border); }
+    footer { text-align: center; padding: 14px; font-size: 0.85rem; color: var(--muted); }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Developer Stealth Moderation Console</h1>
+  </header>
+
+  <main>
+    <section id="devLoginSection" class="card">
+      <h2>Admin Authentication</h2>
+      <label>Secret Dev Key</label>
+      <input id="devKeyInput" type="password" placeholder="Enter DEV_KEY" />
+      <button id="devLoginBtn">Connect Console</button>
+      <p id="devLoginStatus" style="font-size:0.85rem; color:var(--muted); margin-top:8px;"></p>
+    </section>
+
+    <section id="devDashboard" class="card hidden">
+      <div class="grid">
+        <div>
+          <h3>Active Rooms (Stealth Inspect)</h3>
+          <div id="devRoomsList"><p style="color:var(--muted)">Waiting for room data...</p></div>
+        </div>
+        <div>
+          <h3>Stealth Chat Inspector (Non-Invasive)</h3>
+          <div id="devChatBox" class="chat-box"><p style="color:var(--muted)">Select a room to inspect chat invisibly.</p></div>
+        </div>
+      </div>
+      <hr style="border:0; border-top:1px solid var(--border); margin:16px 0;" />
+      <h3>User Moderation & Ban Controls</h3>
+      <p style="font-size:0.85rem; color:var(--muted);">Paste a user's copied Browser ID or Nickname below to moderate them:</p>
+      <div style="display:grid; grid-template-columns: 2fr 1fr 1fr 1.5fr; gap:8px;">
+        <input id="modTargetInput" placeholder="Browser ID or Nickname" style="margin:0;" />
+        <input id="modMinsInput" type="number" value="15" placeholder="Mins" style="margin:0;" />
+        <select id="modActionSelect">
+          <option value="kick">Kick Only</option>
+          <option value="temp_ban">Temp Ban (Mins)</option>
+          <option value="perm_ban">Permanent Ban</option>
+          <option value="unban">Unban User</option>
+        </select>
+        <button id="execModBtn" class="danger">Execute Action</button>
+      </div>
+      <div id="bannedListBox" style="margin-top:12px; font-size:0.85rem; color:var(--muted);"></div>
+    </section>
+  </main>
+
+  <footer>
+    Hangout Admin Portal &bull; Secure Access
+  </footer>
+
+  <script>
+    const $ = id => document.getElementById(id);
+    const HARDCODED_SERVER_URL = "https://shall-commissioners-certificate-posted.trycloudflare.com";
+
+    let devWs = null;
+    let inspectedRoomId = null;
+
+    $('devLoginBtn').onclick = () => {
+      const key = $('devKeyInput').value.trim();
+      if (!key) return alert('Enter Dev Key.');
+      
+      const wsUrl = HARDCODED_SERVER_URL.replace(/^http/, 'ws');
+      devWs = new WebSocket(wsUrl);
+      
+      devWs.onopen = () => devWs.send(JSON.stringify({ type: 'dev_auth', key }));
+      devWs.onmessage = event => {
+        const msg = JSON.parse(event.data);
+        if (msg.type === 'error') {
+          $('devLoginStatus').textContent = msg.message;
+          return;
+        }
+        if (msg.type === 'dev_auth_ok') {
+          $('devLoginSection').classList.add('hidden');
+          $('devDashboard').classList.remove('hidden');
+        }
+        if (msg.type === 'dev_overview') {
+          renderDevRooms(msg.rooms);
+          renderBans(msg.bans);
+        }
+        if (msg.type === 'dev_room_history') {
+          inspectedRoomId = msg.roomId;
+          const box = $('devChatBox');
+          box.innerHTML = '';
+          if (!msg.history || msg.history.length === 0) {
+            box.innerHTML = '<p style="color:var(--muted)">No messages in this room yet.</p>';
+            return;
+          }
+          msg.history.forEach(m => appendChat(box, m));
+        }
+        if (msg.type === 'dev_chat_msg') {
+          if (msg.msg.roomId === inspectedRoomId) {
+            appendChat($('devChatBox'), msg.msg);
+          }
+        }
+      };
+    };
+
+    function renderDevRooms(rooms) {
+      const container = $('devRoomsList');
+      if (!rooms || rooms.length === 0) {
+        container.innerHTML = '<p style="color:var(--muted)">No active rooms.</p>';
+        return;
+      }
+      container.innerHTML = '';
+      rooms.forEach(r => {
+        const div = document.createElement('div');
+        div.className = 'room-item';
+        div.style.flexDirection = 'column';
+        div.style.alignItems = 'flex-start';
+        div.innerHTML = `
+          <div style="display:flex; width:100%; justify-content:space-between;">
+            <strong>${escapeHtml(r.name)} (${r.isPrivate ? 'Private' : 'Public'})</strong>
+            <div>
+              <button class="secondary" style="padding:4px 8px; font-size:0.8rem;" onclick="inspectRoom('${r.id}')">Inspect Chat</button>
+              <button class="danger" style="padding:4px 8px; font-size:0.8rem;" onclick="closeRoom('${r.id}')">Close Room</button>
+            </div>
+          </div>
+          <div style="font-size:0.8rem; color:var(--muted); margin-top:4px;">
+            Members: ${r.members.map(m => `<span style="cursor:pointer; color:var(--accent);" title="Click to target" onclick="selectTarget('${m.browserId}')">${escapeHtml(m.nickname)}</span>`).join(', ') || 'None'}
+          </div>
+        `;
+        container.appendChild(div);
+      });
+    }
+
+    window.selectTarget = bid => {
+      $('modTargetInput').value = bid;
+    };
+
+    window.inspectRoom = roomId => {
+      devWs.send(JSON.stringify({ type: 'dev_inspect_room', roomId }));
+    };
+
+    window.closeRoom = roomId => {
+      const reason = prompt('Reason for closing room:', 'Closed by moderator for safety.');
+      if (reason !== null) {
+        devWs.send(JSON.stringify({ type: 'dev_close_room', roomId, reason }));
+      }
+    };
+
+    function renderBans(bans) {
+      if (!bans) return;
+      const box = $('bannedListBox');
+      const perms = bans.permanent.join(', ') || 'None';
+      const temps = Object.entries(bans.temp).map(([e, t]) => `${e} (${Math.ceil((t-Date.now())/60000)}m left)`).join(', ') || 'None';
+      box.innerHTML = `<strong>Permanent Bans:</strong> ${perms}<br /><strong>Temp Bans:</strong> ${temps}`;
+    }
+
+    $('execModBtn').onclick = () => {
+      const target = $('modTargetInput').value.trim();
+      const action = $('modActionSelect').value;
+      const minutes = parseInt($('modMinsInput').value, 10) || 15;
+      if (!target) return alert('Enter target browser ID or nickname.');
+      const reason = prompt('Moderation reason (sent to user):', 'Removed or banned by moderator.');
+      if (reason !== null) {
+        devWs.send(JSON.stringify({ type: 'dev_action_user', target, action, minutes, reason }));
+        $('modTargetInput').value = '';
+      }
+    };
+
+    function appendChat(box, msg) {
+      const div = document.createElement('div');
+      if (msg.system) {
+        div.className = 'msg sys';
+        div.textContent = msg.text;
+      } else {
+        div.className = 'msg';
+        div.innerHTML = `<strong>${escapeHtml(msg.nickname)}:</strong> ${escapeHtml(msg.text)} <span style="font-size:0.75rem; color:var(--muted)">${msg.time || ''}</span>`;
+      }
+      box.appendChild(div);
+      box.scrollTop = box.scrollHeight;
+    }
+
+    function escapeHtml(str) {
+      return (str || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+  </script>
+</body>
+</html>
