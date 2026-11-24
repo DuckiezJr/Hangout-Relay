@@ -38,9 +38,11 @@
     .msg.sys { color: var(--muted); font-style: italic; }
     .room-item { display: flex; justify-content: space-between; align-items: center; padding: 10px; border-bottom: 1px solid var(--border); }
     .badge { background: #21262d; padding: 3px 8px; border-radius: 12px; font-size: 0.8rem; color: var(--accent); }
+    .member-chip { background: #21262d; border: 1px solid var(--border); padding: 3px 8px; border-radius: 6px; font-size: 0.85rem; cursor: pointer; display: inline-block; margin: 2px; transition: background 0.2s; }
+    .member-chip:hover { background: #30363d; border-color: var(--accent); }
     footer { text-align: center; padding: 14px; font-size: 0.85rem; color: var(--muted); }
-    footer a { color: var(--muted); text-decoration: underline; cursor: pointer; }
     .terms-box { max-height: 140px; overflow-y: auto; background: #0d1117; padding: 10px; border: 1px solid var(--border); border-radius: 6px; font-size: 0.85rem; color: var(--muted); margin-bottom: 10px; }
+    #copyToast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: var(--success); color: #fff; padding: 8px 16px; border-radius: 6px; font-size: 0.9rem; transition: opacity 0.3s; opacity: 0; pointer-events: none; }
   </style>
 </head>
 <body>
@@ -52,7 +54,7 @@
   <main>
     <!-- STATE 1: NICKNAME & LOGIN -->
     <section id="authSection" class="card">
-      <h2>1. Choose Nickname</h2>
+      <h2>Choose Nickname</h2>
 
       <div class="terms-box">
         <strong>Terms & Conditions / Safety Notice:</strong><br />
@@ -99,7 +101,7 @@
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
         <div>
           <h2 id="activeRoomTitle" style="margin:0;">Room</h2>
-          <span id="roomMembersBar" style="font-size:0.85rem; color:var(--muted);"></span>
+          <div id="roomMembersBar" style="margin-top:6px;"></div>
         </div>
         <div style="display:flex; gap:8px;">
           <button id="toggleCamBtn" class="secondary">Start Camera</button>
@@ -121,56 +123,18 @@
         <button id="sendChatBtn">Send</button>
       </div>
     </section>
-
-    <!-- STATE 4: HIDDEN DEV CONSOLE -->
-    <section id="devSection" class="card hidden">
-      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
-        <h2 style="margin:0;">Developer Stealth Moderation Console</h2>
-        <button id="exitDevBtn" class="secondary">Back to User View</button>
-      </div>
-      <div id="devLoginBox">
-        <label>Secret Dev Key</label>
-        <input id="devKeyInput" type="password" placeholder="Enter DEV_KEY" />
-        <button id="devLoginBtn">Connect Stealth Console</button>
-      </div>
-
-      <div id="devDashboard" class="hidden">
-        <div class="grid">
-          <div>
-            <h3>Active Rooms (Stealth Inspect)</h3>
-            <div id="devRoomsList"></div>
-          </div>
-          <div>
-            <h3>Stealth Chat Inspector (Non-Invasive)</h3>
-            <div id="devChatBox" class="chat-box"><p style="color:var(--muted)">Select a room to inspect chat invisibly.</p></div>
-          </div>
-        </div>
-        <hr style="border:0; border-top:1px solid var(--border); margin:16px 0;" />
-        <h3>User Moderation & Ban Controls</h3>
-        <div style="display:grid; grid-template-columns: 2fr 1fr 1fr 1.5fr; gap:8px;">
-          <input id="modEmailInput" placeholder="User Email / Identifier" style="margin:0;" />
-          <input id="modMinsInput" type="number" value="15" placeholder="Mins" style="margin:0;" />
-          <select id="modActionSelect">
-            <option value="kick">Kick Only</option>
-            <option value="temp_ban">Temp Ban (Mins)</option>
-            <option value="perm_ban">Permanent Ban</option>
-            <option value="unban">Unban User</option>
-          </select>
-          <button id="execModBtn" class="danger">Execute Action</button>
-        </div>
-        <div id="bannedListBox" style="margin-top:12px; font-size:0.85rem; color:var(--muted);"></div>
-      </div>
-    </section>
   </main>
 
+  <div id="copyToast">Browser ID copied to clipboard!</div>
+
   <footer>
-    Hangout Relay &bull; <a id="openDevLink">Developer Console</a>
+    Hangout Relay &bull; Secure Connection
   </footer>
 
   <script>
     const $ = id => document.getElementById(id);
     
-    // HARDCODED TERMUX TUNNEL URL (Change this whenever your Cloudflare tunnel restarts)
+    // HARDCODED TERMUX TUNNEL URL
     const HARDCODED_SERVER_URL = "https://shall-commissioners-certificate-posted.trycloudflare.com";
 
     let ws = null;
@@ -180,11 +144,17 @@
     let camInterval = null;
     const remoteVideos = new Map();
 
+    // Get or create persistent browser ID in localStorage
+    let browserId = localStorage.getItem('hangout_browser_id');
+    if (!browserId) {
+      browserId = 'bid_' + Math.random().toString(36.substring(2)) + Date.now().toString(36);
+      localStorage.setItem('hangout_browser_id', browserId);
+    }
+
     $('roomTypeSelect').addEventListener('change', e => {
       $('privatePwBox').classList.toggle('hidden', e.target.value !== 'private');
     });
 
-    // Instant Login without Email Verification
     $('loginBtn').onclick = async () => {
       const nickname = $('nickInput').value.trim();
       if (!$('acceptTerms').checked) return alert('Please accept the Terms & Conditions first.');
@@ -195,15 +165,15 @@
         const res = await fetch(`${HARDCODED_SERVER_URL}/api/login`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ nickname })
+          body: JSON.stringify({ nickname, browserId })
         });
         const data = await res.json();
-        if (!data.ok) return ($('authStatus').textContent = 'Login failed.');
+        if (!data.ok) return ($('authStatus').textContent = data.error || 'Login failed.');
         sessionToken = data.token;
         myNickname = data.nickname;
         connectUserWS(HARDCODED_SERVER_URL);
       } catch (e) {
-        $('authStatus').textContent = 'Could not reach Termux server. Check if tunnel is active.';
+        $('authStatus').textContent = 'Could not reach Termux server.';
       }
     };
 
@@ -222,7 +192,7 @@
           $('authSection').classList.add('hidden');
           $('lobbySection').classList.remove('hidden');
           $('userBadge').classList.remove('hidden');
-          $('userBadge').textContent = myNickname;
+          $('userBadge').textContent = `${myNickname} (ID: ${msg.browserId.slice(0,8)}...)`;
           renderRoomsList(msg.rooms);
         }
         if (msg.type === 'rooms_list') renderRoomsList(msg.rooms);
@@ -233,7 +203,20 @@
           $('chatBox').innerHTML = '';
         }
         if (msg.type === 'room_members') {
-          $('roomMembersBar').textContent = 'Members: ' + msg.members.map(m => m.nickname).join(', ');
+          const bar = $('roomMembersBar');
+          bar.innerHTML = '<span style="color:var(--muted); font-size:0.85rem;">Members (Click name to copy ID): </span>';
+          msg.members.forEach(m => {
+            const chip = document.createElement('span');
+            chip.className = 'member-chip';
+            chip.textContent = m.nickname;
+            chip.title = `Click to copy Browser ID: ${m.browserId}`;
+            chip.onclick = () => {
+              navigator.clipboard.writeText(m.browserId);
+              showToast(`Copied ID for ${m.nickname}: ${m.browserId}`);
+            };
+            bar.appendChild(chip);
+          });
+
           const activeIds = new Set(msg.members.map(m => m.id));
           for (const [id, el] of remoteVideos) {
             if (!activeIds.has(id)) { el.remove(); remoteVideos.delete(id); }
@@ -253,6 +236,13 @@
         }
         if (msg.type === 'error') alert(msg.message);
       };
+    }
+
+    function showToast(text) {
+      const t = $('copyToast');
+      t.textContent = text;
+      t.style.opacity = '1';
+      setTimeout(() => { t.style.opacity = '0'; }, 2500);
     }
 
     function renderRoomsList(rooms) {
@@ -369,118 +359,6 @@
     function escapeHtml(str) {
       return (str || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
     }
-
-    // Hidden Developer Console
-    let devWs = null;
-    let inspectedRoomId = null;
-
-    $('openDevLink').onclick = () => {
-      $('authSection').classList.add('hidden');
-      $('lobbySection').classList.add('hidden');
-      $('roomSection').classList.add('hidden');
-      $('devSection').classList.remove('hidden');
-    };
-
-    $('exitDevBtn').onclick = () => {
-      if (devWs) devWs.close();
-      $('devSection').classList.add('hidden');
-      $('authSection').classList.remove('hidden');
-    };
-
-    $('devLoginBtn').onclick = () => {
-      const key = $('devKeyInput').value.trim();
-      if (!key) return alert('Enter Dev Key.');
-      const wsUrl = HARDCODED_SERVER_URL.replace(/^http/, 'ws');
-      devWs = new WebSocket(wsUrl);
-      devWs.onopen = () => devWs.send(JSON.stringify({ type: 'dev_auth', key }));
-      devWs.onmessage = event => {
-        const msg = JSON.parse(event.data);
-        if (msg.type === 'error') return alert(msg.message);
-        if (msg.type === 'dev_auth_ok') {
-          $('devLoginBox').classList.add('hidden');
-          $('devDashboard').classList.remove('hidden');
-        }
-        if (msg.type === 'dev_overview') {
-          renderDevRooms(msg.rooms);
-          renderBans(msg.bans);
-        }
-        if (msg.type === 'dev_room_history') {
-          inspectedRoomId = msg.roomId;
-          const box = $('devChatBox');
-          box.innerHTML = '';
-          if (!msg.history || msg.history.length === 0) {
-            box.innerHTML = '<p style="color:var(--muted)">No messages in this room yet.</p>';
-            return;
-          }
-          msg.history.forEach(m => appendChat(box, m));
-        }
-        if (msg.type === 'dev_chat_msg') {
-          if (msg.msg.roomId === inspectedRoomId) {
-            appendChat($('devChatBox'), msg.msg);
-          }
-        }
-      };
-    };
-
-    function renderDevRooms(rooms) {
-      const container = $('devRoomsList');
-      if (!rooms || rooms.length === 0) {
-        container.innerHTML = '<p style="color:var(--muted)">No active rooms.</p>';
-        return;
-      }
-      container.innerHTML = '';
-      rooms.forEach(r => {
-        const div = document.createElement('div');
-        div.className = 'room-item';
-        div.style.flexDirection = 'column';
-        div.style.alignItems = 'flex-start';
-        div.innerHTML = `
-          <div style="display:flex; width:100%; justify-content:space-between;">
-            <strong>${escapeHtml(r.name)} (${r.isPrivate ? 'Private' : 'Public'})</strong>
-            <div>
-              <button class="secondary" style="padding:4px 8px; font-size:0.8rem;" onclick="inspectRoom('${r.id}')">Inspect Chat</button>
-              <button class="danger" style="padding:4px 8px; font-size:0.8rem;" onclick="closeRoom('${r.id}')">Close Room</button>
-            </div>
-          </div>
-          <div style="font-size:0.8rem; color:var(--muted); margin-top:4px;">
-            Members: ${r.members.map(m => escapeHtml(m.nickname)).join(', ') || 'None'}
-          </div>
-        `;
-        container.appendChild(div);
-      });
-    }
-
-    window.inspectRoom = roomId => {
-      devWs.send(JSON.stringify({ type: 'dev_inspect_room', roomId }));
-    };
-
-    window.closeRoom = roomId => {
-      const reason = prompt('Reason for closing room:', 'Closed by moderator for safety.');
-      if (reason !== null) {
-        devWs.send(JSON.stringify({ type: 'dev_close_room', roomId, reason }));
-      }
-    };
-
-    function renderBans(bans) {
-      if (!bans) return;
-      const box = $('bannedListBox');
-      const perms = bans.permanent.join(', ') || 'None';
-      const temps = Object.entries(bans.temp).map(([e, t]) => `${e} (${Math.ceil((t-Date.now())/60000)}m left)`).join(', ') || 'None';
-      box.innerHTML = `<strong>Permanent Bans:</strong> ${perms}<br /><strong>Temp Bans:</strong> ${temps}`;
-    }
-
-    $('execModBtn').onclick = () => {
-      const email = $('modEmailInput').value.trim();
-      const action = $('modActionSelect').value;
-      const minutes = parseInt($('modMinsInput').value, 10) || 15;
-      if (!email) return alert('Enter target user email or identifier.');
-      const reason = prompt('Moderation reason (sent to user):', 'Removed or banned by moderator.');
-      if (reason !== null) {
-        devWs.devWs?.send?.(JSON.stringify({ type: 'dev_action_user', email, action, minutes, reason })); // handled safely below
-        devWs.send(JSON.stringify({ type: 'dev_action_user', email, action, minutes, reason }));
-        $('modEmailInput').value = '';
-      }
-    };
   </script>
 </body>
 </html>
