@@ -6,81 +6,120 @@
   <title>Hangout Dev Console</title>
   <style>
     :root {
-      --bg: #0d1117;
-      --card: #161b22;
-      --border: #30363d;
-      --text: #e6edf3;
-      --muted: #8b949e;
-      --accent: #58a6ff;
-      --danger: #f85149;
-      --success: #3fb950;
+      --bg: #090d16;
+      --surface: #111827;
+      --surface-hover: #1f2937;
+      --border: #1f2937;
+      --text: #f3f4f6;
+      --muted: #9ca3af;
+      --accent: #3b82f6;
+      --accent-hover: #2563eb;
+      --danger: #ef4444;
+      --success: #10b981;
     }
-    * { box-sizing: border-box; font-family: system-ui, -apple-system, sans-serif; }
-    body { margin: 0; background: var(--bg); color: var(--text); display: flex; flex-direction: column; min-height: 100vh; }
-    header { padding: 14px 20px; background: var(--card); border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
-    header h1 { margin: 0; font-size: 1.15rem; }
-    main { flex: 1; padding: 20px; max-width: 1100px; width: 100%; margin: 0 auto; }
-    .card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 18px; margin-bottom: 16px; }
+    * { box-sizing: border-box; font-family: 'Inter', system-ui, -apple-system, sans-serif; }
+    body { 
+      margin: 0; 
+      background: var(--bg); 
+      color: var(--text); 
+      display: flex; 
+      flex-direction: column; 
+      height: 100vh; 
+      overflow: hidden; 
+    }
+    main { 
+      flex: 1; 
+      display: flex; 
+      flex-direction: column; 
+      padding: 16px; 
+      max-width: 1200px; 
+      width: 100%; 
+      margin: 0 auto; 
+      overflow-y: auto; 
+    }
+    .card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 18px; margin-bottom: 14px; }
     .hidden { display: none !important; }
-    input, select, button { padding: 10px 12px; border-radius: 6px; border: 1px solid var(--border); background: #0d1117; color: var(--text); font-size: 0.95rem; }
-    input { width: 100%; margin-bottom: 10px; }
-    button { cursor: pointer; background: var(--accent); color: #0d1117; font-weight: 600; border: none; }
-    button.secondary { background: #21262d; color: var(--text); border: 1px solid var(--border); }
-    button.danger { background: var(--danger); color: #fff; }
-    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; }
-    .chat-box { height: 260px; overflow-y: auto; background: #0d1117; border: 1px solid var(--border); border-radius: 6px; padding: 10px; margin-bottom: 10px; }
-    .msg { margin-bottom: 6px; font-size: 0.92rem; word-break: break-word; }
-    .msg.sys { color: var(--muted); font-style: italic; }
-    .room-item { display: flex; justify-content: space-between; align-items: center; padding: 10px; border-bottom: 1px solid var(--border); }
-    footer { text-align: center; padding: 14px; font-size: 0.85rem; color: var(--muted); }
+    input, select, button { padding: 9px 12px; border-radius: 8px; border: 1px solid #374151; background: #090d16; color: var(--text); font-size: 0.9rem; outline: none; }
+    input:focus, select:focus { border-color: var(--accent); }
+    button { cursor: pointer; background: var(--accent); color: #fff; font-weight: 600; border: none; transition: background 0.2s; }
+    button:hover { background: var(--accent-hover); }
+    button.secondary { background: var(--surface-hover); border: 1px solid #374151; }
+    button.secondary:hover { background: #374151; }
+    button.danger { background: var(--danger); }
+    button.danger:hover { background: #dc2626; }
+
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    @media(max-width: 800px) { .grid-2 { grid-template-columns: 1fr; } }
+
+    .chat-box { height: 210px; overflow-y: auto; background: #090d16; border: 1px solid var(--border); border-radius: 8px; padding: 10px; margin-bottom: 10px; font-size: 0.9rem; }
+    .msg { margin-bottom: 6px; word-break: break-word; }
+    .msg.sys { color: var(--muted); font-style: italic; font-size: 0.85rem; }
+    .room-item { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--border); }
+    .room-item:last-child { border-bottom: none; }
+    .member-tag { cursor: pointer; color: #60a5fa; text-decoration: underline; margin-right: 4px; font-weight: 500; }
+    .member-tag:hover { color: #93c5fd; }
   </style>
 </head>
 <body>
-  <header>
-    <h1>Developer Stealth Moderation Console</h1>
-  </header>
-
   <main>
-    <section id="devLoginSection" class="card">
-      <h2>Admin Authentication</h2>
-      <label>Secret Dev Key</label>
-      <input id="devKeyInput" type="password" placeholder="Enter DEV_KEY" />
-      <button id="devLoginBtn">Connect Console</button>
-      <p id="devLoginStatus" style="font-size:0.85rem; color:var(--muted); margin-top:8px;"></p>
+    <!-- LOGIN CARD -->
+    <section id="devLoginSection" class="card" style="max-width: 400px; margin: auto; width: 100%; text-align: center;">
+      <h2 style="margin-top:0; font-size: 1.3rem;">Admin Portal</h2>
+      <p style="color:var(--muted); font-size: 0.85rem; margin-bottom: 16px;">Enter your secret developer key to access stealth moderation.</p>
+      <input id="devKeyInput" type="password" placeholder="Enter DEV_KEY" style="width:100%; margin-bottom:12px;" />
+      <button id="devLoginBtn" style="width:100%;">Connect Console</button>
+      <p id="devLoginStatus" style="font-size:0.85rem; color:var(--danger); margin-top:10px;"></p>
     </section>
 
-    <section id="devDashboard" class="card hidden">
-      <div class="grid">
-        <div>
-          <h3>Active Rooms (Stealth Inspect)</h3>
-          <div id="devRoomsList"><p style="color:var(--muted)">Waiting for room data...</p></div>
+    <!-- DASHBOARD -->
+    <section id="devDashboard" class="card hidden" style="margin:0; flex:1; display:flex; flex-direction:column;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; border-bottom:1px solid var(--border); padding-bottom:10px;">
+        <h2 style="margin:0; font-size:1.1rem;">Stealth Moderation & Speaker Console</h2>
+        <span style="font-size:0.85rem; color:var(--success);">● Connected Securely</span>
+      </div>
+
+      <!-- Top Row: Active Rooms & Stealth Chat Inspector -->
+      <div class="grid-2">
+        <div class="card" style="margin:0; background:#090d16;">
+          <h3 style="margin-top:0; font-size:1rem;">Active Rooms & Members</h3>
+          <div id="devRoomsList" style="max-height: 220px; overflow-y: auto;"><p style="color:var(--muted)">Waiting for room data...</p></div>
         </div>
-        <div>
-          <h3>Stealth Chat Inspector (Non-Invasive)</h3>
-          <div id="devChatBox" class="chat-box"><p style="color:var(--muted)">Select a room to inspect chat invisibly.</p></div>
+        <div class="card" style="margin:0; background:#090d16;">
+          <h3 style="margin-top:0; font-size:1rem;" id="inspectedRoomTitle">Stealth Chat Inspector</h3>
+          <div id="devChatBox" class="chat-box"><p style="color:var(--muted)">Select a room from the left to inspect chat invisibly.</p></div>
         </div>
       </div>
-      <hr style="border:0; border-top:1px solid var(--border); margin:16px 0;" />
-      <h3>User Moderation & Ban Controls</h3>
-      <p style="font-size:0.85rem; color:var(--muted);">Paste a user's copied Browser ID or Nickname below to moderate them:</p>
-      <div style="display:grid; grid-template-columns: 2fr 1fr 1fr 1.5fr; gap:8px;">
-        <input id="modTargetInput" placeholder="Browser ID or Nickname" style="margin:0;" />
-        <input id="modMinsInput" type="number" value="15" placeholder="Mins" style="margin:0;" />
-        <select id="modActionSelect">
-          <option value="kick">Kick Only</option>
-          <option value="temp_ban">Temp Ban (Mins)</option>
-          <option value="perm_ban">Permanent Ban</option>
-          <option value="unban">Unban User</option>
-        </select>
-        <button id="execModBtn" class="danger">Execute Action</button>
+
+      <!-- Middle Row: Speaker / Announcement Box -->
+      <div class="card" style="margin: 14px 0 0 0; background:#090d16;">
+        <h3 style="margin-top:0; font-size:1rem;">📢 Developer Speaker / Announcements</h3>
+        <div style="display:grid; grid-template-columns: 2fr 1fr auto; gap:8px;">
+          <input id="speakerMsgInput" placeholder="Type announcement or message as speaker..." style="margin:0;" />
+          <select id="speakerTargetSelect" style="margin:0;">
+            <option value="ALL">All Rooms (Global Broadcast)</option>
+          </select>
+          <button id="sendSpeakerBtn">Send Announcement</button>
+        </div>
       </div>
-      <div id="bannedListBox" style="margin-top:12px; font-size:0.85rem; color:var(--muted);"></div>
+
+      <!-- Bottom Row: User Moderation & Bans -->
+      <div class="card" style="margin: 14px 0 0 0; background:#090d16;">
+        <h3 style="margin-top:0; font-size:1rem;">User Moderation & Bans</h3>
+        <div style="display:grid; grid-template-columns: 2fr 1fr 1fr 1.5fr; gap:8px;">
+          <input id="modTargetInput" placeholder="Browser ID or Nickname" style="margin:0;" />
+          <input id="modMinsInput" type="number" value="15" placeholder="Mins" style="margin:0;" />
+          <select id="modActionSelect" style="margin:0;">
+            <option value="kick">Kick Only</option>
+            <option value="temp_ban">Temp Ban</option>
+            <option value="perm_ban">Permanent Ban</option>
+            <option value="unban">Unban User</option>
+          </select>
+          <button id="execModBtn" class="danger" style="margin:0;">Execute Action</button>
+        </div>
+        <div id="bannedListBox" style="margin-top:10px; font-size:0.8rem; color:var(--muted);"></div>
+      </div>
     </section>
   </main>
-
-  <footer>
-    Hangout Admin Portal &bull; Secure Access
-  </footer>
 
   <script>
     const $ = id => document.getElementById(id);
@@ -88,6 +127,7 @@
 
     let devWs = null;
     let inspectedRoomId = null;
+    let cachedRooms = [];
 
     $('devLoginBtn').onclick = () => {
       const key = $('devKeyInput').value.trim();
@@ -108,11 +148,15 @@
           $('devDashboard').classList.remove('hidden');
         }
         if (msg.type === 'dev_overview') {
-          renderDevRooms(msg.rooms);
+          cachedRooms = msg.rooms || [];
+          renderDevRooms(cachedRooms);
+          updateSpeakerDropdown(cachedRooms);
           renderBans(msg.bans);
         }
         if (msg.type === 'dev_room_history') {
           inspectedRoomId = msg.roomId;
+          const r = cachedRooms.find(x => x.id === roomId);
+          $('inspectedRoomTitle').textContent = `Stealth Chat Inspector (${msg.roomId})`;
           const box = $('devChatBox');
           box.innerHTML = '';
           if (!msg.history || msg.history.length === 0) {
@@ -139,29 +183,47 @@
       rooms.forEach(r => {
         const div = document.createElement('div');
         div.className = 'room-item';
-        div.style.flexDirection = 'column';
-        div.style.alignItems = 'flex-start';
         div.innerHTML = `
-          <div style="display:flex; width:100%; justify-content:space-between;">
-            <strong>${escapeHtml(r.name)} (${r.isPrivate ? 'Private' : 'Public'})</strong>
-            <div>
-              <button class="secondary" style="padding:4px 8px; font-size:0.8rem;" onclick="inspectRoom('${r.id}')">Inspect Chat</button>
-              <button class="danger" style="padding:4px 8px; font-size:0.8rem;" onclick="closeRoom('${r.id}')">Close Room</button>
-            </div>
+          <div>
+            <strong>${escapeHtml(r.name)}</strong> <span style="color:var(--muted); font-size:0.8rem;">(${r.isPrivate ? 'Private' : 'Public'})</span><br/>
+            <span style="font-size:0.8rem; color:var(--muted);">Members: ${r.members.map(m => `<span class="member-tag" title="Click to target" onclick="selectTarget('${m.browserId}')">${escapeHtml(m.nickname)}</span>`).join(', ') || 'None'}</span>
           </div>
-          <div style="font-size:0.8rem; color:var(--muted); margin-top:4px;">
-            Members: ${r.members.map(m => `<span style="cursor:pointer; color:var(--accent);" title="Click to target" onclick="selectTarget('${m.browserId}')">${escapeHtml(m.nickname)}</span>`).join(', ') || 'None'}
+          <div style="display:flex; gap:6px;">
+            <button class="secondary" style="padding:4px 8px; font-size:0.75rem;" onclick="inspectRoom('${r.id}')">Inspect</button>
+            <button class="danger" style="padding:4px 8px; font-size:0.75rem;" onclick="closeRoom('${r.id}')">Close</button>
           </div>
         `;
         container.appendChild(div);
       });
     }
 
+    function updateSpeakerDropdown(rooms) {
+      const select = $('speakerTargetSelect');
+      const currentVal = select.value;
+      select.innerHTML = '<option value="ALL">All Rooms (Global Broadcast)</option>';
+      rooms.forEach(r => {
+        const opt = document.createElement('option');
+        opt.value = r.id;
+        opt.textContent = `Room: ${r.name}`;
+        select.appendChild(opt);
+      });
+      select.value = currentVal;
+    }
+
+    $('sendSpeakerBtn').onclick = () => {
+      const text = $('speakerMsgInput').value.trim();
+      const targetRoomId = $('speakerTargetSelect').value;
+      if (!text) return alert('Enter announcement message.');
+      devWs.send(JSON.stringify({ type: 'dev_speaker_broadcast', text, targetRoomId }));
+      $('speakerMsgInput').value = '';
+    };
+
     window.selectTarget = bid => {
       $('modTargetInput').value = bid;
     };
 
     window.inspectRoom = roomId => {
+      inspectedRoomId = roomId;
       devWs.send(JSON.stringify({ type: 'dev_inspect_room', roomId }));
     };
 
@@ -177,7 +239,7 @@
       const box = $('bannedListBox');
       const perms = bans.permanent.join(', ') || 'None';
       const temps = Object.entries(bans.temp).map(([e, t]) => `${e} (${Math.ceil((t-Date.now())/60000)}m left)`).join(', ') || 'None';
-      box.innerHTML = `<strong>Permanent Bans:</strong> ${perms}<br /><strong>Temp Bans:</strong> ${temps}`;
+      box.innerHTML = `<strong>Perm Bans:</strong> ${perms} | <strong>Temp Bans:</strong> ${temps}`;
     }
 
     $('execModBtn').onclick = () => {
