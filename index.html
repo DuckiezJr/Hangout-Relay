@@ -247,7 +247,7 @@
   </header>
 
   <main>
-    <!-- STATE 1: NICKNAME & COLLAPSIBLE TERMS -->
+    <!-- STATE 1: NICKNAME & LOGIN -->
     <section id="authSection" class="hidden">
       <h2>Join Hangout</h2>
       <p class="subtitle">Pick a unique display name to join</p>
@@ -260,7 +260,7 @@
       <details class="terms-dropdown">
         <summary>Read Terms & Conditions</summary>
         <div class="terms-content">
-          By using this platform, you agree to follow community safety rules. No harassment, predatory behavior, or illegal content is allowed. Public rooms are visible to all users, and chat rooms may be monitored in real time by moderators to enforce safety and issue bans. Camera feeds are only relayed to members inside your current room.
+          By using this platform, you agree to follow community safety rules. No harassment, predatory behavior, or illegal content is allowed. Public rooms are visible to all users, and chat rooms may be monitored in real time by moderators to enforce safety and issue bans. Camera and microphone streams are only relayed to members inside your current room.
         </div>
       </details>
 
@@ -273,7 +273,7 @@
       <p id="authStatus" style="font-size:0.85rem; color:var(--danger); text-align:center; margin: 10px 0 0 0;"></p>
     </section>
 
-    <!-- STATE 2: ROOM LOBBY -->
+    <!-- STATE 2: LOBBY -->
     <section id="lobbySection" class="hidden">
       <div class="card">
         <h2>Public Rooms</h2>
@@ -300,7 +300,7 @@
       </div>
     </section>
 
-    <!-- STATE 3: SINGLE-SCREEN ACTIVE ROOM -->
+    <!-- STATE 3: ACTIVE ROOM -->
     <section id="roomSection" class="hidden">
       <div class="room-header">
         <div>
@@ -308,15 +308,16 @@
           <div id="roomMembersBar" style="margin-top:4px;"></div>
         </div>
         <div style="display:flex; gap:8px;">
-          <button id="toggleCamBtn" class="secondary">Start Camera</button>
+          <button id="toggleCamBtn" class="secondary">Start Camera & Mic</button>
           <button id="leaveRoomBtn" class="danger">Leave</button>
         </div>
       </div>
 
       <div id="videoGrid" class="video-grid hidden">
         <div id="localVideoTile" class="video-tile hidden">
+          <!-- Muted locally so you don't hear your own mic feedback -->
           <video id="localVideo" autoplay muted playsinline></video>
-          <span class="video-label">You</span>
+          <span class="video-label">You (Cam & Mic)</span>
         </div>
       </div>
       <canvas id="captureCanvas" width="240" height="180" class="hidden"></canvas>
@@ -340,22 +341,21 @@
     let myNickname = '';
     let localStream = null;
     let camInterval = null;
+    let mediaRecorder = null;
     const remoteVideos = new Map();
+    const remoteAudioElements = new Map();
 
-    // Persistent browser ID in localStorage
     let browserId = localStorage.getItem('hangout_browser_id');
     if (!browserId) {
       browserId = 'bid_' + Math.random().toString(36).substring(2) + Date.now().toString(36);
       localStorage.setItem('hangout_browser_id', browserId);
     }
 
-    // Check if user already has a saved token & nickname for auto-login
     const savedToken = localStorage.getItem('hangout_token');
     const savedNick = localStorage.getItem('hangout_nickname');
 
     window.addEventListener('DOMContentLoaded', () => {
       if (savedToken && savedNick) {
-        // Auto-login using saved session
         myNickname = savedNick;
         sessionToken = savedToken;
         connectUserWS(HARDCODED_SERVER_URL);
@@ -390,7 +390,7 @@
     $('loginBtn').onclick = async () => {
       const nickname = $('nickInput').value.trim();
       if (!nickname) return ($('authStatus').textContent = 'Please enter a nickname first.');
-      if (!$('acceptTerms').checked) return ($('authStatus').textContent = 'Please check the box to agree to the Terms & Conditions.');
+      if (!$('acceptTerms').checked) return ($('authStatus').textContent = 'Please check the box to agree to Terms.');
       
       $('authStatus').style.color = 'var(--muted)';
       $('authStatus').textContent = 'Connecting...';
@@ -408,7 +408,6 @@
         sessionToken = data.token;
         myNickname = data.nickname;
         
-        // Save to localStorage for auto-login next time
         localStorage.setItem('hangout_token', sessionToken);
         localStorage.setItem('hangout_nickname', myNickname);
 
@@ -437,7 +436,6 @@
           $('userBadge').textContent = `${myNickname}`;
           renderRoomsList(msg.rooms);
         } else if (msg.type === 'error' && savedToken) {
-          // If auto-login token expired or failed, clear storage and show login
           localStorage.removeItem('hangout_token');
           localStorage.removeItem('hangout_nickname');
           $('authSection').classList.remove('hidden');
@@ -471,6 +469,8 @@
             if (!activeIds.has(id)) { 
               el.remove(); 
               remoteVideos.delete(id); 
+              const aud = remoteAudioElements.get(id);
+              if (aud) { aud.remove(); remoteAudioElements.delete(id); }
               removedAny = true;
             }
           }
@@ -479,8 +479,8 @@
         if (msg.type === 'chat') appendChat($('chatBox'), msg);
         if (msg.type === 'left_room' || msg.type === 'room_closed') {
           if (msg.type === 'room_closed') alert(msg.reason);
-          stopCamera();
-          clearRemoteVideos();
+          stopCameraAndMic();
+          clearRemoteMedia();
           $('roomSection').classList.add('hidden');
           $('lobbySection').classList.remove('hidden');
         }
@@ -549,17 +549,23 @@
       box.scrollTop = box.scrollHeight;
     }
 
+    // Start Camera & Microphone
     $('toggleCamBtn').onclick = async () => {
       if (localStream) {
-        stopCamera();
+        stopCameraAndMic();
       } else {
         try {
-          localStream = await navigator.mediaDevices.getUserMedia({ video: { width: 240, height: 180 }, audio: false });
+          localStream = await navigator.mediaDevices.getUserMedia({ 
+            video: { width: 240, height: 180 }, 
+            audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } 
+          });
+          
           $('localVideo').srcObject = localStream;
           $('localVideoTile').classList.remove('hidden');
-          $('toggleCamBtn').textContent = 'Stop Camera';
+          $('toggleCamBtn').textContent = 'Stop Camera & Mic';
           updateCameraGridLayout();
 
+          // Video frames interval
           const canvas = $('captureCanvas');
           const ctx = canvas.getContext('2d');
           camInterval = setInterval(() => {
@@ -567,23 +573,41 @@
             ctx.drawImage($('localVideo'), 0, 0, canvas.width, canvas.height);
             canvas.toBlob(blob => {
               if (blob && ws.readyState === WebSocket.OPEN) ws.send(blob);
-            }, 'image/jpeg', 0.5);
+            }, 'image/jpeg', 0.45);
           }, 150);
+
+          // Audio streaming via MediaRecorder for crystal-clear voice
+          const audioTrack = localStream.getAudioTracks()[0];
+          if (audioTrack) {
+            const audioStream = new MediaStream([audioTrack]);
+            mediaRecorder = new MediaRecorder(audioStream, { mimeType: 'audio/webm;codecs=opus' });
+            mediaRecorder.ondataavailable = async e => {
+              if (e.data && e.data.size > 0 && ws && ws.readyState === WebSocket.OPEN) {
+                const buffer = await e.data.arrayBuffer();
+                ws.send(buffer);
+              }
+            };
+            mediaRecorder.start(250); // Send audio chunks every 250ms for low latency
+          }
         } catch (e) {
-          alert('Camera access denied or unavailable.');
+          alert('Camera or microphone access denied / unavailable.');
         }
       }
     };
 
-    function stopCamera() {
+    function stopCameraAndMic() {
       if (camInterval) clearInterval(camInterval);
       camInterval = null;
+      if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+        mediaRecorder.stop();
+      }
+      mediaRecorder = null;
       if (localStream) {
         localStream.getTracks().forEach(t => t.stop());
         localStream = null;
       }
       $('localVideoTile').classList.add('hidden');
-      $('toggleCamBtn').textContent = 'Start Camera';
+      $('toggleCamBtn').textContent = 'Start Camera & Mic';
       updateCameraGridLayout();
     }
 
@@ -593,25 +617,45 @@
       for (let i = 0; i < 8; i++) {
         senderId += bytes[i].toString(16).padStart(2, '0');
       }
-      const jpegBlob = new Blob([buffer.slice(8)], { type: 'image/jpeg' });
-      const url = URL.createObjectURL(jpegBlob);
-      let tile = remoteVideos.get(senderId);
-      if (!tile) {
-        tile = document.createElement('div');
-        tile.className = 'video-tile';
-        tile.innerHTML = `<img /><span class="video-label">Peer ${senderId.slice(0,4)}</span>`;
-        $('videoGrid').appendChild(tile);
-        remoteVideos.set(senderId, tile);
-        updateCameraGridLayout();
+      const payload = buffer.slice(8);
+
+      // Distinguish between JPEG video frame and WebM/Opus audio chunk
+      // JPEGs start with magic bytes 0xFF, 0xD8
+      if (bytes[8] === 0xFF && bytes[9] === 0xD8) {
+        const jpegBlob = new Blob([payload], { type: 'image/jpeg' });
+        const url = URL.createObjectURL(jpegBlob);
+        let tile = remoteVideos.get(senderId);
+        if (!tile) {
+          tile = document.createElement('div');
+          tile.className = 'video-tile';
+          tile.innerHTML = `<img /><span class="video-label">Peer ${senderId.slice(0,4)}</span>`;
+          $('videoGrid').appendChild(tile);
+          remoteVideos.set(senderId, tile);
+          updateCameraGridLayout();
+        }
+        const img = tile.querySelector('img');
+        if (img.src) URL.revokeObjectURL(img.src);
+        img.src = url;
+      } else {
+        // Handle incoming audio chunk
+        const audioBlob = new Blob([payload], { type: 'audio/webm' });
+        const audioUrl = URL.createObjectURL(audioBlob);
+        let audioEl = remoteAudioElements.get(senderId);
+        if (!audioEl) {
+          audioEl = document.createElement('audio');
+          audioEl.autoplay = true;
+          document.body.appendChild(audioEl);
+          remoteAudioElements.set(senderId, audioEl);
+        }
+        audioEl.src = audioUrl;
       }
-      const img = tile.querySelector('img');
-      if (img.src) URL.revokeObjectURL(img.src);
-      img.src = url;
     }
 
-    function clearRemoteVideos() {
+    function clearRemoteMedia() {
       for (const [_, tile] of remoteVideos) tile.remove();
       remoteVideos.clear();
+      for (const [_, aud] of remoteAudioElements) aud.remove();
+      remoteAudioElements.clear();
       updateCameraGridLayout();
     }
 
