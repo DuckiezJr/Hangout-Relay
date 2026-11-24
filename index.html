@@ -147,7 +147,7 @@
     // Get or create persistent browser ID in localStorage
     let browserId = localStorage.getItem('hangout_browser_id');
     if (!browserId) {
-      browserId = 'bid_' + Math.random().toString(36.substring(2)) + Date.now().toString(36);
+      browserId = 'bid_' + Math.random().toString(36).substring(2) + Date.now().toString(36);
       localStorage.setItem('hangout_browser_id', browserId);
     }
 
