@@ -51,7 +51,6 @@
     }
     .hidden { display: none !important; }
 
-    /* Form Elements */
     input, select, button { 
       padding: 10px 14px; 
       border-radius: 8px; 
@@ -70,7 +69,6 @@
     button.danger { background: var(--danger); color: #fff; }
     button.danger:hover { background: #dc2626; }
 
-    /* STATE 1: SLEEK CENTERED LOGIN CARD */
     #authSection {
       margin: auto;
       width: 100%;
@@ -87,7 +85,6 @@
     .input-group label { display: block; font-size: 0.85rem; color: var(--muted); margin-bottom: 6px; font-weight: 500; }
     .input-group input { width: 100%; }
 
-    /* Collapsible Terms Dropdown */
     details.terms-dropdown {
       background: #090d16;
       border: 1px solid #374151;
@@ -121,7 +118,6 @@
     }
     .agree-row input { width: 16px; height: 16px; margin: 0; cursor: pointer; accent-color: var(--accent); }
 
-    /* STATE 2: LOBBY */
     #lobbySection {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
@@ -134,7 +130,6 @@
     .room-item { display: flex; justify-content: space-between; align-items: center; padding: 12px; border-bottom: 1px solid var(--border); }
     .room-item:last-child { border-bottom: none; }
 
-    /* STATE 3: SINGLE-SCREEN ACTIVE ROOM */
     #roomSection {
       display: flex;
       flex-direction: column;
@@ -168,18 +163,16 @@
     }
     .member-chip:hover { background: #374151; border-color: var(--accent); }
 
-    /* DYNAMIC SCALING VIDEO GRID (Fits 1-4 in 2x2, shrinks to 4x4 for 5-16) */
     .video-grid {
       display: grid;
       grid-template-columns: repeat(2, 1fr);
       grid-template-rows: repeat(2, 1fr);
       gap: 8px;
-      height: 46vh; /* Keeps cameras compact so chat always fits below */
+      height: 46vh;
       min-height: 200px;
       margin: 10px 0;
       flex-shrink: 0;
     }
-    /* Automatically shrinks tiles by half (4x4 = 16 slots) when > 4 cameras are active */
     .video-grid.compact-16 {
       grid-template-columns: repeat(4, 1fr);
       grid-template-rows: repeat(4, 1fr);
@@ -214,7 +207,6 @@
       pointer-events: none;
     }
 
-    /* Chat Area (Fills remaining screen height) */
     .chat-box { 
       flex: 1; 
       overflow-y: auto; 
@@ -256,9 +248,9 @@
 
   <main>
     <!-- STATE 1: NICKNAME & COLLAPSIBLE TERMS -->
-    <section id="authSection">
+    <section id="authSection" class="hidden">
       <h2>Join Hangout</h2>
-      <p class="subtitle">Pick a display name to jump into a room</p>
+      <p class="subtitle">Pick a unique display name to join</p>
 
       <div class="input-group">
         <label for="nickInput">Nickname</label>
@@ -273,7 +265,7 @@
       </details>
 
       <label class="agree-row">
-        <input type="checkbox" id="acceptTerms" />
+        <input type="checkbox" id="acceptTerms" checked />
         <span>I agree to the Terms & Conditions</span>
       </label>
 
@@ -321,7 +313,6 @@
         </div>
       </div>
 
-      <!-- Video Grid: Hidden when 0 cams are on, 2x2 for 1-4 cams, 4x4 for 5-16 cams -->
       <div id="videoGrid" class="video-grid hidden">
         <div id="localVideoTile" class="video-tile hidden">
           <video id="localVideo" autoplay muted playsinline></video>
@@ -342,8 +333,6 @@
 
   <script>
     const $ = id => document.getElementById(id);
-    
-    // HARDCODED TERMUX TUNNEL URL
     const HARDCODED_SERVER_URL = "https://shall-commissioners-certificate-posted.trycloudflare.com";
 
     let ws = null;
@@ -353,14 +342,28 @@
     let camInterval = null;
     const remoteVideos = new Map();
 
-    // Fixed persistent browser ID generator
+    // Persistent browser ID in localStorage
     let browserId = localStorage.getItem('hangout_browser_id');
     if (!browserId) {
       browserId = 'bid_' + Math.random().toString(36).substring(2) + Date.now().toString(36);
       localStorage.setItem('hangout_browser_id', browserId);
     }
 
-    // Dynamically adjust camera grid between hidden (0), 2x2 (1-4), and 4x4 (5-16)
+    // Check if user already has a saved token & nickname for auto-login
+    const savedToken = localStorage.getItem('hangout_token');
+    const savedNick = localStorage.getItem('hangout_nickname');
+
+    window.addEventListener('DOMContentLoaded', () => {
+      if (savedToken && savedNick) {
+        // Auto-login using saved session
+        myNickname = savedNick;
+        sessionToken = savedToken;
+        connectUserWS(HARDCODED_SERVER_URL);
+      } else {
+        $('authSection').classList.remove('hidden');
+      }
+    });
+
     function updateCameraGridLayout() {
       const grid = $('videoGrid');
       const localActive = !$('localVideoTile').classList.contains('hidden');
@@ -404,6 +407,11 @@
         }
         sessionToken = data.token;
         myNickname = data.nickname;
+        
+        // Save to localStorage for auto-login next time
+        localStorage.setItem('hangout_token', sessionToken);
+        localStorage.setItem('hangout_nickname', myNickname);
+
         connectUserWS(HARDCODED_SERVER_URL);
       } catch (e) {
         $('authStatus').style.color = 'var(--danger)';
@@ -428,6 +436,11 @@
           $('userBadge').classList.remove('hidden');
           $('userBadge').textContent = `${myNickname}`;
           renderRoomsList(msg.rooms);
+        } else if (msg.type === 'error' && savedToken) {
+          // If auto-login token expired or failed, clear storage and show login
+          localStorage.removeItem('hangout_token');
+          localStorage.removeItem('hangout_nickname');
+          $('authSection').classList.remove('hidden');
         }
         if (msg.type === 'rooms_list') renderRoomsList(msg.rooms);
         if (msg.type === 'joined_room') {
