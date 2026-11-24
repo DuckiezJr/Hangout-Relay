@@ -69,6 +69,7 @@
     button.danger { background: var(--danger); color: #fff; }
     button.danger:hover { background: #dc2626; }
 
+    /* AUTH LOGIN CARD */
     #authSection {
       margin: auto;
       width: 100%;
@@ -118,6 +119,7 @@
     }
     .agree-row input { width: 16px; height: 16px; margin: 0; cursor: pointer; accent-color: var(--accent); }
 
+    /* LOBBY */
     #lobbySection {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
@@ -130,6 +132,7 @@
     .room-item { display: flex; justify-content: space-between; align-items: center; padding: 12px; border-bottom: 1px solid var(--border); }
     .room-item:last-child { border-bottom: none; }
 
+    /* ACTIVE ROOM */
     #roomSection {
       display: flex;
       flex-direction: column;
@@ -163,20 +166,18 @@
     }
     .member-chip:hover { background: #374151; border-color: var(--accent); }
 
+    /* AUTO-FITTING SQUARE CAMERA GRID */
     .video-grid {
       display: grid;
-      grid-template-columns: repeat(2, 1fr);
-      grid-template-rows: repeat(2, 1fr);
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      grid-auto-rows: 1fr;
       gap: 8px;
-      height: 46vh;
-      min-height: 200px;
+      height: 48vh;
+      min-height: 180px;
       margin: 10px 0;
       flex-shrink: 0;
-    }
-    .video-grid.compact-16 {
-      grid-template-columns: repeat(4, 1fr);
-      grid-template-rows: repeat(4, 1fr);
-      gap: 6px;
+      justify-content: center;
+      align-content: center;
     }
     .video-tile { 
       background: #000; 
@@ -185,10 +186,12 @@
       overflow: hidden; 
       position: relative; 
       width: 100%;
-      height: 100%;
+      aspect-ratio: 1 / 1; 
       display: flex;
       align-items: center;
       justify-content: center;
+      margin: auto;
+      max-height: 100%;
     }
     .video-tile video, .video-tile img { 
       width: 100%; 
@@ -207,6 +210,7 @@
       pointer-events: none;
     }
 
+    /* CHAT BOX */
     .chat-box { 
       flex: 1; 
       overflow-y: auto; 
@@ -247,7 +251,7 @@
   </header>
 
   <main>
-    <!-- STATE 1: NICKNAME & LOGIN -->
+    <!-- STATE 1: NICKNAME & COLLAPSIBLE TERMS -->
     <section id="authSection" class="hidden">
       <h2>Join Hangout</h2>
       <p class="subtitle">Pick a unique display name to join</p>
@@ -273,7 +277,7 @@
       <p id="authStatus" style="font-size:0.85rem; color:var(--danger); text-align:center; margin: 10px 0 0 0;"></p>
     </section>
 
-    <!-- STATE 2: LOBBY -->
+    <!-- STATE 2: ROOM LOBBY -->
     <section id="lobbySection" class="hidden">
       <div class="card">
         <h2>Public Rooms</h2>
@@ -315,7 +319,6 @@
 
       <div id="videoGrid" class="video-grid hidden">
         <div id="localVideoTile" class="video-tile hidden">
-          <!-- Muted locally so you don't hear your own mic feedback -->
           <video id="localVideo" autoplay muted playsinline></video>
           <span class="video-label">You (Cam & Mic)</span>
         </div>
@@ -373,11 +376,6 @@
         grid.classList.add('hidden');
       } else {
         grid.classList.remove('hidden');
-        if (totalCams > 4) {
-          grid.classList.add('compact-16');
-        } else {
-          grid.classList.remove('compact-16');
-        }
       }
     }
 
@@ -549,7 +547,6 @@
       box.scrollTop = box.scrollHeight;
     }
 
-    // Start Camera & Microphone
     $('toggleCamBtn').onclick = async () => {
       if (localStream) {
         stopCameraAndMic();
@@ -565,7 +562,6 @@
           $('toggleCamBtn').textContent = 'Stop Camera & Mic';
           updateCameraGridLayout();
 
-          // Video frames interval
           const canvas = $('captureCanvas');
           const ctx = canvas.getContext('2d');
           camInterval = setInterval(() => {
@@ -576,7 +572,6 @@
             }, 'image/jpeg', 0.45);
           }, 150);
 
-          // Audio streaming via MediaRecorder for crystal-clear voice
           const audioTrack = localStream.getAudioTracks()[0];
           if (audioTrack) {
             const audioStream = new MediaStream([audioTrack]);
@@ -587,7 +582,7 @@
                 ws.send(buffer);
               }
             };
-            mediaRecorder.start(250); // Send audio chunks every 250ms for low latency
+            mediaRecorder.start(250);
           }
         } catch (e) {
           alert('Camera or microphone access denied / unavailable.');
@@ -619,8 +614,6 @@
       }
       const payload = buffer.slice(8);
 
-      // Distinguish between JPEG video frame and WebM/Opus audio chunk
-      // JPEGs start with magic bytes 0xFF, 0xD8
       if (bytes[8] === 0xFF && bytes[9] === 0xD8) {
         const jpegBlob = new Blob([payload], { type: 'image/jpeg' });
         const url = URL.createObjectURL(jpegBlob);
@@ -637,7 +630,6 @@
         if (img.src) URL.revokeObjectURL(img.src);
         img.src = url;
       } else {
-        // Handle incoming audio chunk
         const audioBlob = new Blob([payload], { type: 'audio/webm' });
         const audioUrl = URL.createObjectURL(audioBlob);
         let audioEl = remoteAudioElements.get(senderId);
@@ -652,7 +644,7 @@
     }
 
     function clearRemoteMedia() {
-      for (const [_, tile] of remoteVideos) tile.remove();
+      for (const [_, tile] naget of remoteVideos) tile.remove();
       remoteVideos.clear();
       for (const [_, aud] of remoteAudioElements) aud.remove();
       remoteAudioElements.clear();
