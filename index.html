@@ -644,7 +644,7 @@
     }
 
     function clearRemoteMedia() {
-      for (const [_, tile] naget of remoteVideos) tile.remove();
+      for (const [_, tile] of remoteVideos) tile.remove();
       remoteVideos.clear();
       for (const [_, aud] of remoteAudioElements) aud.remove();
       remoteAudioElements.clear();
